@@ -1,0 +1,49 @@
+name: Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - name: 束ね直す
+        run: node scripts/build-playground.js
+      - name: 閲覧場を組み立てる
+        run: |
+          mkdir -p _site/playground _site/dist
+          cp playground/index.html _site/playground/index.html
+          cp dist/wabun.bundle.js _site/dist/wabun.bundle.js
+          printf '%s\n' \
+            '<!doctype html>' \
+            '<html lang="ja">' \
+            '<meta charset="UTF-8">' \
+            '<title>和文 — wabun-lang</title>' \
+            '<meta http-equiv="refresh" content="0; url=./playground/">' \
+            '<link rel="canonical" href="./playground/">' \
+            '<p><a href="./playground/">閲覧場へ参らむ</a></p>' \
+            > _site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

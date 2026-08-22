@@ -20,3 +20,9 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: node test/run.js
       - run: node scripts/build-playground.js
+      - name: dist の乖離検査（束ね直しの結果が commit 済みか）
+        run: |
+          if ! git diff --exit-code -- dist/; then
+            echo '::error::dist/wabun.bundle.js が src/ と乖離している。npm run build を実行して commit すること。'
+            exit 1
+          fi

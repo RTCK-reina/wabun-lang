@@ -1,6 +1,12 @@
 # 和文 (wabun-lang)
 
+[![CI](https://github.com/RTCK-reina/wabun-lang/actions/workflows/ci.yml/badge.svg)](https://github.com/RTCK-reina/wabun-lang/actions/workflows/ci.yml)
+[![Pages](https://github.com/RTCK-reina/wabun-lang/actions/workflows/pages.yml/badge.svg)](https://github.com/RTCK-reina/wabun-lang/actions/workflows/pages.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 > 古典日本語の文法でプログラミングする。
+>
+> ブラウザで今すぐ試す（揃へ方不要）: https://rtck-reina.github.io/wabun-lang/
 >
 > 完全和文（文語調）版の案内は [読本.md](読本.md) を見よ。
 
@@ -91,12 +97,18 @@ node bin/wabun.js repl
 
 ### 閲覧場（ブラウザ）
 
+公開版がある。揃へずとも触れる：https://rtck-reina.github.io/wabun-lang/
+
+手元で動かす場合：
+
 ```bash
 # まず束ねを生成
-node scripts/build-playground.js
+npm run build   # = node scripts/build-playground.js
 # あとは playground/index.html を閲覧器で開くだけ
 open playground/index.html
 ```
+
+`dist/wabun.bundle.js` は `src/` から生成される成果物であり、リポジトリに commit されている。`src/` に手を入れたら `npm run build` を実行して `dist/` も併せて commit すること（CI が乖離を検出して落ちる）。
 
 機能：
 

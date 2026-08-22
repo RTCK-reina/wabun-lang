@@ -32,7 +32,7 @@
   "bugs": {
     "url": "https://github.com/RTCK-reina/wabun-lang/issues"
   },
-  "homepage": "https://github.com/RTCK-reina/wabun-lang#readme",
+  "homepage": "https://rtck-reina.github.io/wabun-lang/",
   "engines": {
     "node": ">=18"
   },
