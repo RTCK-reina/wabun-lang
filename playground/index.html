@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>和文 — wabun-lang 遊び場</title>
+<style>
+  :root {
+    --bg: #efe7d3;
+    --paper: #fbf6e7;
+    --paper-2: #f3ebd2;
+    --ink: #1a1a1a;
+    --sub: #6a6359;
+    --line: #d6cdb6;
+    --line-soft: #e3dac1;
+    --accent: #b13a2e;
+    --accent-soft: #d68a7d;
+    --hl-k: #b13a2e;     /* 予約語：朱 */
+    --hl-s: #3f6b3f;     /* 文字列：苔 */
+    --hl-n: #1c4b8a;     /* 数値：紺 */
+    --hl-c: #8a8170;     /* 注釈：薄墨 */
+    --hl-i: #2a2a2a;     /* 識別子：墨 */
+    --error: #c0392b;
+    --code-bg: #fbf6e7;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "MS Mincho", serif;
+    /* 和紙風紋様：SVG data URI */
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(177,58,46,0.04) 0, transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(28,75,138,0.04) 0, transparent 50%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.5  0 0 0 0 0.42  0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  }
+
+  header {
+    padding: 16px 20px 10px;
+    border-bottom: 1px solid var(--line);
+    background: var(--paper);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 26px;
+    letter-spacing: 0.08em;
+    color: var(--ink);
+    border-left: 4px solid var(--accent);
+    padding-left: 10px;
+  }
+  header .sub {
+    font-size: 12px;
+    color: var(--sub);
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: 0.06em;
+  }
+  header .controls {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  select, button {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 6px 12px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  button:hover, select:hover { background: #f0e8d3; border-color: var(--accent-soft); }
+  button.run { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; letter-spacing: 0.1em; }
+  button.run:hover { background: #93291f; border-color: #93291f; }
+  button.toggle.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: calc(100vh - 96px);
+  }
+  .pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .pane-header {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--paper-2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--sub);
+    letter-spacing: 0.08em;
+    min-height: 40px;
+  }
+  .pane.right .pane-header,
+  .pane.right .output-area { border-left: 1px solid var(--line); }
+
+  .tab {
+    padding: 4px 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--sub);
+    border-radius: 2px;
+  }
+  .tab.active { color: var(--ink); border-color: var(--line); background: var(--paper); }
+  .tab:hover { background: var(--paper); }
+
+  /* 編集場：textarea と pre を鏡映配置 */
+  .editor-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--paper);
+  }
+  .editor-wrap.vertical { writing-mode: vertical-rl; }
+  .editor-wrap textarea,
+  .editor-wrap .highlight {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    margin: 0;
+    padding: 16px 20px;
+    border: 0;
+    font-family: "SF Mono", "Hiragino Maru Gothic ProN", "Menlo", "Yu Gothic", monospace;
+    font-size: 14px;
+    line-height: 1.75;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow: auto;
+    box-sizing: border-box;
+  }
+  .editor-wrap textarea {
+    background: transparent;
+    color: transparent;
+    caret-color: var(--ink);
+    z-index: 2;
+    resize: none;
+    outline: none;
+  }
+  .editor-wrap .highlight {
+    color: var(--hl-i);
+    z-index: 1;
+    pointer-events: none;
+    background: transparent;
+  }
+  .editor-wrap textarea::selection { background: rgba(177,58,46,0.20); }
+  .hl-k { color: var(--hl-k); font-weight: 600; }
+  .hl-s { color: var(--hl-s); }
+  .hl-n { color: var(--hl-n); }
+  .hl-c { color: var(--hl-c); font-style: italic; }
+  .hl-i { color: var(--hl-i); }
+  .hl-err { background: rgba(192,57,43,0.18); border-bottom: 1px wavy var(--error); }
+
+  .output-area {
+    flex: 1;
+    margin: 0;
+    padding: 16px 20px;
+    background: var(--code-bg);
+    color: var(--ink);
+    font-family: "SF Mono", "Hiragino Maru Gothic ProN", "Menlo", "Yu Gothic", monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .output-area.error { color: var(--error); }
+  .output-area .ast-key { color: var(--hl-k); }
+  .output-area .ast-str { color: var(--hl-s); }
+  .output-area .ast-num { color: var(--hl-n); }
+
+  footer {
+    padding: 6px 16px;
+    border-top: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--sub);
+    font-size: 12px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+  footer .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    display: inline-block;
+    background: var(--sub);
+    transition: background 0.2s;
+  }
+  footer .status-dot.ok { background: #4a7a3a; }
+  footer .status-dot.run { background: #c19400; }
+  footer .status-dot.err { background: var(--error); }
+  footer .spacer { flex: 1; }
+
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 18px;
+    border-radius: 4px;
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 800px) {
+    main { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+    .pane.right .pane-header,
+    .pane.right .output-area { border-left: 0; border-top: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>和文<span class="sub" style="margin-left:8px;">wabun-lang</span></h1>
+  <span class="sub">古典日本語の文法にて算法を綴る</span>
+  <div class="controls">
+    <select id="examples" title="例題を読み込む">
+      <option value="">— 例題 —</option>
+    </select>
+    <button id="kageshi" class="toggle" title="影詞（GLSL fragment shader）態">影詞</button>
+    <button id="vertical" class="toggle" title="縦書き表示の切替">縦書</button>
+    <button id="share" title="この綴りを含む経路を写し取る">共有</button>
+    <button id="clear" title="編集と出力を消す">消す</button>
+    <button id="run" class="run" title="⌘ もしくは ^ と Enter とを併せ押すべし">実行</button>
+  </div>
+</header>
+
+<main>
+  <section class="pane left">
+    <div class="pane-header">
+      <span>編集</span>
+      <span style="font-size:11px; color:var(--sub); margin-left:auto;">⌘ もしくは ^ ＋ Enter で実行</span>
+    </div>
+    <div class="editor-wrap" id="editor-wrap">
+      <pre class="highlight" id="highlight"></pre>
+      <textarea id="editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+    </div>
+  </section>
+  <section class="pane right">
+    <div class="pane-header">
+      <button class="tab active" data-tab="result">結果</button>
+      <button class="tab" data-tab="ast">構文木</button>
+      <button class="tab" data-tab="js">成果文</button>
+      <button class="tab" data-tab="tokens">字句</button>
+      <span style="margin-left:auto; font-size:11px; color:var(--sub);" id="auto-status">自動実行</span>
+    </div>
+    <pre class="output-area" id="output"></pre>
+    <canvas id="shader-canvas" style="display:none; flex:1; min-height:0; width:100%; background:#000;"></canvas>
+  </section>
+</main>
+
+<footer>
+  <span class="status-dot" id="status-dot"></span>
+  <span id="status-text">待機</span>
+  <span class="spacer"></span>
+  <span id="cursor-info">1:1</span>
+  <span id="char-info">0字</span>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="../dist/wabun.bundle.js"></script>
+<script>
+const EXAMPLES = {
+  '挨拶': `※ Hello World ※
+「世界」を書きけり。
+`,
+  '算術': `※ 算術 ※
+三を 値甲 と云ふ。
+四を 値乙 と云ふ。
+値甲 に 値乙 を加へたる を書きけり。
+値甲 に 値乙 を掛けたる を書きけり。
+（値甲 に 値乙 を加へたる）に 二 を掛けたる を書きけり。
+`,
+  '条件分岐': `※ 条件分岐 ※
+五を 値 と云ふ。
+値、三より大なりならば、
+　「大なり」を書きけり。
+然らずば、
+　「小なり」を書きけり。
+然らば終はり。
+`,
+  'FizzBuzz': `※ FizzBuzz ※
+一より十五まで n を一つずつ増しつつ、
+　n を 三 にて割りたる余り、零に等し、且つ n を 五 にて割りたる余り、零に等しならば、
+　　「FizzBuzz」を書きけり。
+　然らずして、n を 三 にて割りたる余り、零に等しならば、
+　　「Fizz」を書きけり。
+　然らずして、n を 五 にて割りたる余り、零に等しならば、
+　　「Buzz」を書きけり。
+　然らずば、
+　　n を書きけり。
+　然らば終はり。
+繰り返し終はりぬ。
+`,
+  '階乗': `※ 階乗（再帰）※
+n を受けて返す業を 階乗 と云ふ。
+　n、一に勝らずならば、
+　　一を返すなり。
+　然らば終はり。
+　階乗 に （n より 一 を引きたる）を奉りたる を 下 と云ふ。
+　n に 下 を掛けたる を返すなり。
+業終はりぬ。
+
+階乗 に 五 を奉りたる を書きけり。
+階乗 に 十 を奉りたる を書きけり。
+`,
+  '斐波那契': `※ フィボナッチ ※
+n を受けて返す業を 斐 と云ふ。
+　n、二より小なりならば、
+　　n を返すなり。
+　然らば終はり。
+　斐 に （n より 一 を引きたる）を奉りたる を 甲 と云ふ。
+　斐 に （n より 二 を引きたる）を奉りたる を 乙 と云ふ。
+　甲 に 乙 を加へたる を返すなり。
+業終はりぬ。
+
+零より十まで i を一つずつ増しつつ、
+　斐 に i を奉りたる を書きけり。
+繰り返し終はりぬ。
+`,
+  '集合': `※ 配列 ※
+〔一、二、三、四、五〕を 数々 と云ふ。
+数々 を書きけり。
+数々 の総数 を書きけり。
+数々 の 三 番目 を書きけり。
+
+集ひ：「春」、「夏」、「秋」、「冬」、集ひ終はり を 四季 と云ふ。
+四季 の各々を 季節 と為して、
+　季節 を書きけり。
+繰り返し終はりぬ。
+`,
+  '録': `※ 録 ※
+録：「名」は「太郎」、「年」は二十、録終はり を 人 と云ふ。
+人 を書きけり。
+人 の「名」を書きけり。
+人 の「年」を書きけり。
+
+人 の「住所」に 「東京」を改む。
+人 を書きけり。
+`,
+  '高階関数': `※ 高階関数 ※
+n を受けて返す業を 二倍 と云ふ。
+　n に 二 を掛けたる を返すなり。
+業終はりぬ。
+
+n を受けて返す業を 偶数か と云ふ。
+　n を 二 にて 割りたる余り、零に等し を返すなり。
+業終はりぬ。
+
+a と b を受けて返す業を 加算 と云ふ。
+　a に b を加へたる を返すなり。
+業終はりぬ。
+
+写し替へ に 〔一、二、三、四、五〕 と 二倍 を奉りたる を書きけり。
+選び出し に 〔一、二、三、四、五、六〕 と 偶数か を奉りたる を書きけり。
+束ね に 〔一、二、三、四、五〕 と 加算 と 零 を奉りたる を書きけり。
+`,
+  '試捕': `※ 例外処理 ※
+試みに、
+　「危ない事よ」を投ぐ。
+過つに、e を以て、
+　「捕まへたり：」 に e を継ぎたる を書きけり。
+試み終はりぬ。
+`,
+  '要素改め': `※ 集合・録の操作 ※
+〔一、二、三、四、五〕を 数 と云ふ。
+数 の 三 番目 に 三十 を改む。
+数 を書きけり。
+数 の 一 番目 を削る。
+数 を書きけり。
+
+録：「名」は「太郎」、録終はり を 人 と云ふ。
+人 の「年」に 二十 を改む。
+人 を書きけり。
+`,
+  '数当て': `※ 数当て遊び（実行按鈕を押すと入力問ひが出る）※
+受けて返す業を 遊ぶ と云ふ。
+　乱整数 に 百 を奉りたる に 一 を加へたる を 答 と云ふ。
+　零を 試行 と云ふ。
+　「一より百までの数を当てよ」を書きけり。
+　真 なる間、
+　　試行 に （試行 に 一 を加へたる）を改む。
+　　推測 に問ひけり。
+　　数値化 に 推測 を奉りたる を 数 と云ふ。
+　　数、答 に等しならば、
+　　　「正解！ 試行回数：」 に （文字列化 に 試行 を奉りたる）を継ぎたる を書きけり。
+　　　無し を返すなり。
+　　然らずして、数、答 より 大なりならば、
+　　　「もっと小さし」を書きけり。
+　　然らずば、
+　　　「もっと大きし」を書きけり。
+　　然らば終はり。
+　繰り返し終はりぬ。
+業終はりぬ。
+
+遊ぶ に を奉りけり。
+`,
+  'じゃんけん': `※ じゃんけん ※
+〔「グー」、「チョキ」、「パー」〕を 手 と云ふ。
+「『ぐー』『ちょき』『ぱー』のいずれかを入力すべし」を書きけり。
+人手 に問ひけり。
+
+無し を 人 と云ふ。
+人手、「ぐー」に等し、或いは 人手、「グー」に等しならば、人 に 零 を改む。
+然らずして、人手、「ちょき」に等し、或いは 人手、「チョキ」に等しならば、人 に 一 を改む。
+然らずして、人手、「ぱー」に等し、或いは 人手、「パー」に等しならば、人 に 二 を改む。
+然らずば、「『ぐー』『ちょき』『ぱー』に非ず」を書きけり。
+然らば終はり。
+
+人、無し に異なりならば、
+　乱整数 に 三 を奉りたる を 我 と云ふ。
+　「あなた：」 に 手 の （人 に 一 を加へたる）番目 を継ぎたる を書きけり。
+　「われ　：」 に 手 の （我 に 一 を加へたる）番目 を継ぎたる を書きけり。
+　人、我 に等しならば、
+　　「あいこなり」を書きけり。
+　然らずして、（人 に 一 を加へたる）を 三 にて割りたる余り、我 に等しならば、
+　　「あなたの勝ちなり」を書きけり。
+　然らずば、
+　　「われの勝ちなり」を書きけり。
+　然らば終はり。
+然らば終はり。
+`,
+  '虹（影詞）': `※ 虹色ぼかし — 影詞態 ※
+受けて返す業を 主 と云ふ。
+　時 に 〇・五 を掛けたる を t と云ふ。
+　〔
+　　正弦 に （uv の「横」 に t を加へたる）を奉りたる、
+　　余弦 に （uv の「縦」 に t を加へたる）を奉りたる、
+　　〇・五、
+　　一
+　〕 を返すなり。
+業終はりぬ。
+`,
+  '波（影詞）': `※ 波紋 — 影詞態 ※
+受けて返す業を 主 と云ふ。
+　〔零・五、零・五〕 を 中心 と云ふ。
+　距離 に uv と 中心 を奉りたる を d と云ふ。
+　d に 二十 を掛けたる を 距離項 と云ふ。
+　時 に 三 を掛けたる を 時間項 と云ふ。
+　距離項 より 時間項 を引きたる を 入力 と云ふ。
+　正弦 に 入力 を奉りたる を 波 と云ふ。
+　波 に 一 を加へたる を 二 にて 割りたる を 強さ と云ふ。
+　〔強さ、強さ に 〇・五 を掛けたる、零・八、一〕 を返すなり。
+業終はりぬ。
+`,
+  '円（影詞）': `※ 円 — 影詞態 ※
+受けて返す業を 主 と云ふ。
+　〔零・五、零・五〕 を 中心 と云ふ。
+　距離 に uv と 中心 を奉りたる を d と云ふ。
+　滑らか段 に 〇・三 と 〇・二八 と d を奉りたる を 縁 と云ふ。
+　〔縁、縁、一、一〕 を返すなり。
+業終はりぬ。
+`,
+  '歌問答': `※ 俳句問答 ※
+集ひ：
+　録：「句」は「古池や蛙飛び込む水の音」、「作者」は「松尾芭蕉」、録終はり、
+　録：「句」は「柿くへば鐘が鳴るなり法隆寺」、「作者」は「正岡子規」、録終はり、
+　録：「句」は「をりとりてはらりとおもきすゝきかな」、「作者」は「飯田蛇笏」、録終はり、
+集ひ終はり を 問題集 と云ふ。
+
+零を 正答 と云ふ。
+
+問題集 の各々を 一問 と為して、
+　「Q. この句の作者は？」 を書きけり。
+　一問 の「句」を書きけり。
+　答 に問ひけり。
+　整ふ に 答 を奉りたる を 入 と云ふ。
+　入、一問 の「作者」 に等しならば、
+　　「正解なり」を書きけり。
+　　正答 に （正答 に 一 を加へたる）を改む。
+　然らずば、
+　　「不正解。正しくは：」 に 一問 の「作者」 を継ぎたる を書きけり。
+　然らば終はり。
+繰り返し終はりぬ。
+
+「結果：」 に （文字列化 に 正答 を奉りたる）を継ぎたる に 「／」 を継ぎたる に （文字列化 に 問題集 の総数 を奉りたる）を継ぎたる に 「正解」 を継ぎたる を書きけり。
+`,
+};
+
+// ====== DOM ======
+const editor = document.getElementById('editor');
+const highlight = document.getElementById('highlight');
+const editorWrap = document.getElementById('editor-wrap');
+const output = document.getElementById('output');
+const examplesSel = document.getElementById('examples');
+const runBtn = document.getElementById('run');
+const verticalBtn = document.getElementById('vertical');
+const kageshiBtn = document.getElementById('kageshi');
+const shareBtn = document.getElementById('share');
+const clearBtn = document.getElementById('clear');
+const statusDot = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+const cursorInfo = document.getElementById('cursor-info');
+const charInfo = document.getElementById('char-info');
+const toast = document.getElementById('toast');
+const shaderCanvas = document.getElementById('shader-canvas');
+
+let activeTab = 'result';
+let lastResult = { result: '', ast: '', js: '', tokens: '', error: false };
+
+// ====== examples select ======
+for (const k of Object.keys(EXAMPLES)) {
+  const opt = document.createElement('option');
+  opt.value = k;
+  opt.textContent = k;
+  examplesSel.appendChild(opt);
+}
+
+// ====== 彩色 ======
+function escapeHtml(s) {
+  return s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+}
+
+function buildHighlightHtml(src) {
+  // 注釈位置抽出（※ ... ※ または ※ ... 行末）
+  const commentRanges = [];
+  src.replace(/※[^※\n]*※?/g, (m, offset) => {
+    commentRanges.push([offset, offset + m.length]);
+    return m;
+  });
+
+  // tokenize（失敗しても誤りとせず）
+  let tokens = [];
+  try {
+    tokens = window.WabunLang.tokenize(src);
+  } catch (e) {
+    // 構文解析誤り時は素のまま表示
+    return escapeHtml(src);
+  }
+
+  // labels: 各文字位置の階級
+  const labels = new Array(src.length).fill(null);
+
+  // 注釈
+  for (const [start, end] of commentRanges) {
+    for (let i = start; i < end; i++) labels[i] = 'c';
+  }
+
+  // line/col → offset 変換
+  const lineOffsets = [0];
+  for (let i = 0; i < src.length; i++) {
+    if (src[i] === '\n') lineOffsets.push(i + 1);
+  }
+  function posToOffset(line, col) {
+    return (lineOffsets[line - 1] || 0) + (col - 1);
+  }
+
+  for (const t of tokens) {
+    if (t.type === '文末') continue;
+    const start = posToOffset(t.line, t.col);
+    let len;
+    if (t.type === '文字列') len = t.value.length + 2; // 「」含む
+    else if (t.type === '数値') len = (t.raw || String(t.value)).length;
+    else if (t.type === '予約' || t.type === '識別子') len = String(t.value).length;
+    else len = 1;
+
+    let label;
+    if (t.type === '予約') label = 'k';
+    else if (t.type === '文字列') label = 's';
+    else if (t.type === '数値') label = 'n';
+    else if (t.type === '識別子') label = 'i';
+    else label = null;
+
+    if (label) {
+      for (let i = start; i < start + len && i < src.length; i++) {
+        if (labels[i] !== 'c') labels[i] = label;
+      }
+    }
+  }
+
+  // 札列を span に変換
+  let html = '';
+  let cur = null;
+  let buf = '';
+  for (let i = 0; i < src.length; i++) {
+    const lab = labels[i];
+    if (lab !== cur) {
+      if (cur) html += `<span class="hl-${cur}">${escapeHtml(buf)}</span>`;
+      else html += escapeHtml(buf);
+      cur = lab;
+      buf = '';
+    }
+    buf += src[i];
+  }
+  if (cur) html += `<span class="hl-${cur}">${escapeHtml(buf)}</span>`;
+  else html += escapeHtml(buf);
+
+  // 末尾改行で表示崩れ防ぎ
+  if (html.endsWith('\n')) html += ' ';
+  return html;
+}
+
+function syncHighlight() {
+  const src = editor.value;
+  highlight.innerHTML = buildHighlightHtml(src);
+  charInfo.textContent = `${toKansuji([...src].length)}字`;
+  updateCursorInfo();
+}
+
+function syncScroll() {
+  highlight.scrollTop = editor.scrollTop;
+  highlight.scrollLeft = editor.scrollLeft;
+}
+
+function toKansuji(n) {
+  if (n === 0) return '〇';
+  const D = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  const U = ['', '十', '百', '千'];
+  const B = ['', '万', '億', '兆'];
+  let s = '';
+  let bIdx = 0;
+  while (n > 0) {
+    let seg = n % 10000;
+    n = Math.floor(n / 10000);
+    if (seg > 0) {
+      let segStr = '';
+      let uIdx = 0;
+      while (seg > 0) {
+        const d = seg % 10;
+        if (d > 0) {
+          if (uIdx === 0) segStr = D[d] + segStr;
+          else if (d === 1) segStr = U[uIdx] + segStr;
+          else segStr = D[d] + U[uIdx] + segStr;
+        }
+        seg = Math.floor(seg / 10);
+        uIdx++;
+      }
+      s = segStr + B[bIdx] + s;
+    }
+    bIdx++;
+  }
+  return s || '〇';
+}
+
+function updateCursorInfo() {
+  const pos = editor.selectionStart;
+  const before = editor.value.slice(0, pos);
+  const line = (before.match(/\n/g) || []).length + 1;
+  const col = before.length - before.lastIndexOf('\n');
+  cursorInfo.textContent = `${toKansuji(line)}行${toKansuji(col)}列`;
+}
+
+// ====== 実行 ======
+function setStatus(state, text) {
+  statusDot.classList.remove('ok', 'run', 'err');
+  if (state) statusDot.classList.add(state);
+  statusText.textContent = text;
+}
+
+function renderTabs() {
+  document.querySelectorAll('.tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === activeTab);
+  });
+  output.classList.toggle('error', lastResult.error && activeTab === 'result');
+  output.textContent = lastResult[activeTab] || '';
+}
+
+document.querySelectorAll('.tab').forEach(b => {
+  b.addEventListener('click', () => {
+    activeTab = b.dataset.tab;
+    renderTabs();
+  });
+});
+
+let runToken = 0;
+async function execute(interactive) {
+  const myToken = ++runToken;
+  setStatus('run', '実行中…');
+  const buf = [];
+  const src = editor.value;
+
+  // tokens, ast, js を計算
+  let tokensStr = '', astStr = '', jsStr = '';
+  try {
+    const toks = window.WabunLang.tokenize(src);
+    tokensStr = toks.map(t =>
+      `${String(t.line ?? '').padStart(3)}行${String(t.col ?? '').padStart(3)}列  ${(t.type || '').padEnd(6)}  ${typeof t.value === 'string' ? '「' + t.value + '」' : t.value}`
+    ).join('\n');
+    const ast = window.WabunLang.parse(toks);
+    astStr = JSON.stringify(ast, null, 2);
+    jsStr = window.WabunLang.compile(ast);
+  } catch (e) {
+    if (myToken !== runToken) return;
+    lastResult = {
+      result: e.message || String(e),
+      ast: astStr || '(構文解析誤りのためAST不可)',
+      js: jsStr || '(構文解析誤りのためJS生成不可)',
+      tokens: tokensStr || '(字句解析誤り)',
+      error: true,
+    };
+    setStatus('err', '誤りあり');
+    renderTabs();
+    return;
+  }
+
+  if (!interactive) {
+    // 自動実行：問ひけり を含む綴りは省略（問ひを開かないため）
+    if (/問ひけり/.test(src)) {
+      lastResult = {
+        result: '※ 入力を要するため自動実行は控へ申し候。「実行」鍵を押すべし。',
+        ast: astStr,
+        js: jsStr,
+        tokens: tokensStr,
+        error: false,
+      };
+      setStatus(null, '入力待ち');
+      renderTabs();
+      return;
+    }
+  }
+
+  try {
+    await window.WabunLang.runSource(src, {
+      writeLine: (s) => { buf.push(s); },
+      readLine: async () => {
+        const v = prompt('入力：') ?? '';
+        return v;
+      },
+    });
+    if (myToken !== runToken) return;
+    lastResult = {
+      result: buf.join('\n'),
+      ast: astStr,
+      js: jsStr,
+      tokens: tokensStr,
+      error: false,
+    };
+    setStatus('ok', '完了');
+  } catch (e) {
+    if (myToken !== runToken) return;
+    lastResult = {
+      result: (buf.length ? buf.join('\n') + '\n\n' : '') + (e.message || String(e)),
+      ast: astStr,
+      js: jsStr,
+      tokens: tokensStr,
+      error: true,
+    };
+    setStatus('err', '誤りあり');
+  }
+  renderTabs();
+}
+
+// ====== 自動実行（debounced）======
+let debounceTimer = null;
+function scheduleAutoRun() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => execute(false), 350);
+}
+
+// ====== 編集事象 ======
+editor.addEventListener('input', () => {
+  syncHighlight();
+  scheduleAutoRun();
+  saveToHash();
+});
+editor.addEventListener('scroll', syncScroll);
+editor.addEventListener('keyup', updateCursorInfo);
+editor.addEventListener('click', updateCursorInfo);
+editor.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    e.preventDefault();
+    execute(true);
+  }
+  // Tab で全角空白挿入
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = editor.selectionStart;
+    editor.value = editor.value.slice(0, s) + '　' + editor.value.slice(editor.selectionEnd);
+    editor.selectionStart = editor.selectionEnd = s + 1;
+    syncHighlight();
+    scheduleAutoRun();
+  }
+});
+
+// ====== 按鈕 ======
+runBtn.addEventListener('click', () => execute(true));
+clearBtn.addEventListener('click', () => {
+  editor.value = '';
+  syncHighlight();
+  lastResult = { result: '', ast: '', js: '', tokens: '', error: false };
+  renderTabs();
+  setStatus(null, '待機');
+  saveToHash();
+});
+verticalBtn.addEventListener('click', () => {
+  editorWrap.classList.toggle('vertical');
+  verticalBtn.classList.toggle('active');
+});
+shareBtn.addEventListener('click', async () => {
+  saveToHash();
+  const url = location.href;
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast('経路を写し取りたり');
+  } catch {
+    showToast('経路は：' + url);
+  }
+});
+
+examplesSel.addEventListener('change', (e) => {
+  const k = e.target.value;
+  if (k && EXAMPLES[k]) {
+    editor.value = EXAMPLES[k];
+    syncHighlight();
+    scheduleAutoRun();
+    saveToHash();
+  }
+  e.target.value = '';
+});
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1800);
+}
+
+// ====== 共有URL ======
+function saveToHash() {
+  const src = editor.value;
+  if (!src) {
+    if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+    return;
+  }
+  const encoded = encodeURIComponent(src);
+  // 大きすぎる時は位置情報に入れない（URLが煩雑になる）
+  if (encoded.length > 8000) return;
+  history.replaceState(null, '', '#c=' + encoded);
+}
+function loadFromHash() {
+  if (location.hash.startsWith('#c=')) {
+    try {
+      return decodeURIComponent(location.hash.slice(3));
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+// ====== 影詞（GLSL）態 ======
+let kageshiMode = false;
+let gl = null;
+let glProgram = null;
+let glStartTime = 0;
+let glAnimId = null;
+let lastShaderSource = '';
+
+function initWebGL() {
+  if (gl) return gl;
+  gl = shaderCanvas.getContext('webgl');
+  if (!gl) {
+    showToast('WebGL に対応せず');
+    return null;
+  }
+  // 全画面四角形
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    -1, -1,  1, -1,  -1, 1,
+    -1, 1,   1, -1,   1, 1,
+  ]), gl.STATIC_DRAW);
+  return gl;
+}
+
+function compileShader(src, type) {
+  const sh = gl.createShader(type);
+  gl.shaderSource(sh, src);
+  gl.compileShader(sh);
+  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+    const log = gl.getShaderInfoLog(sh);
+    gl.deleteShader(sh);
+    throw new Error('影詞翻訳誤り：' + log);
+  }
+  return sh;
+}
+
+function setShader(fragSrc) {
+  if (!gl) return;
+  if (fragSrc === lastShaderSource && glProgram) return;
+  lastShaderSource = fragSrc;
+  const vs = compileShader(`
+    attribute vec2 a_position;
+    void main() { gl_Position = vec4(a_position, 0.0, 1.0); }
+  `, gl.VERTEX_SHADER);
+  const fs = compileShader(fragSrc, gl.FRAGMENT_SHADER);
+  const prog = gl.createProgram();
+  gl.attachShader(prog, vs);
+  gl.attachShader(prog, fs);
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+    const log = gl.getProgramInfoLog(prog);
+    gl.deleteProgram(prog);
+    throw new Error('影詞紐帯誤り：' + log);
+  }
+  if (glProgram) gl.deleteProgram(glProgram);
+  glProgram = prog;
+  gl.useProgram(prog);
+  const aPos = gl.getAttribLocation(prog, 'a_position');
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+}
+
+function renderShader() {
+  if (!gl || !glProgram) return;
+  const w = shaderCanvas.clientWidth, h = shaderCanvas.clientHeight;
+  if (shaderCanvas.width !== w || shaderCanvas.height !== h) {
+    shaderCanvas.width = w; shaderCanvas.height = h;
+    gl.viewport(0, 0, w, h);
+  }
+  gl.useProgram(glProgram);
+  const uRes = gl.getUniformLocation(glProgram, 'u_resolution');
+  const uTime = gl.getUniformLocation(glProgram, 'u_time');
+  if (uRes) gl.uniform2f(uRes, w, h);
+  if (uTime) gl.uniform1f(uTime, (performance.now() - glStartTime) / 1000);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+}
+
+function startShaderLoop() {
+  if (glAnimId) cancelAnimationFrame(glAnimId);
+  glStartTime = performance.now();
+  const loop = () => {
+    renderShader();
+    glAnimId = requestAnimationFrame(loop);
+  };
+  loop();
+}
+
+function stopShaderLoop() {
+  if (glAnimId) cancelAnimationFrame(glAnimId);
+  glAnimId = null;
+}
+
+function executeKageshi() {
+  let astStr = '', glsl = '', tokensStr = '';
+  try {
+    const src = editor.value;
+    const tokens = window.WabunLang.tokenize(src);
+    tokensStr = tokens.map(t => `${String(t.line).padStart(3)}行${String(t.col).padStart(3)}列  ${(t.type || '').padEnd(6)}  ${typeof t.value === 'string' ? '「' + t.value + '」' : t.value}`).join('\n');
+    const ast = window.WabunLang.parse(tokens);
+    astStr = JSON.stringify(ast, null, 2);
+    glsl = window.WabunLang.kageshiCompile(ast);
+    initWebGL();
+    if (!gl) throw new Error('WebGL に対応せず');
+    setShader(glsl);
+    if (!glAnimId) startShaderLoop();
+    // 描画成功 → canvas 表示、output 非表示
+    output.style.display = 'none';
+    shaderCanvas.style.display = 'block';
+    lastResult = {
+      result: '※ 影詞描画中（右の幕を見よ）',
+      ast: astStr,
+      js: glsl,
+      tokens: tokensStr,
+      error: false,
+    };
+    setStatus('ok', '影詞描画中');
+    renderTabs();
+  } catch (e) {
+    // 失敗 → output に誤り表示、canvas 非表示
+    stopShaderLoop();
+    shaderCanvas.style.display = 'none';
+    output.style.display = '';
+    lastResult = {
+      result: e.message || String(e),
+      ast: astStr || '(構文木未生成)',
+      js: glsl || '(成果文未生成)',
+      tokens: tokensStr || '(字句未生成)',
+      error: true,
+    };
+    setStatus('err', '影詞誤り');
+    activeTab = 'result';
+    renderTabs();
+  }
+}
+
+function setKageshiMode(on) {
+  kageshiMode = on;
+  kageshiBtn.classList.toggle('active', on);
+  if (on) {
+    executeKageshi();
+  } else {
+    stopShaderLoop();
+    shaderCanvas.style.display = 'none';
+    output.style.display = '';
+    execute(false);
+  }
+}
+
+kageshiBtn.addEventListener('click', () => setKageshiMode(!kageshiMode));
+
+// 影詞態時は即時実行を上書き
+const _origScheduleAutoRun = scheduleAutoRun;
+scheduleAutoRun = function() {
+  if (kageshiMode) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => executeKageshi(), 350);
+  } else {
+    _origScheduleAutoRun();
+  }
+};
+
+// 例題切替時、影詞例題なら自動的に影詞態に
+const _origExamplesHandler = examplesSel.onchange;
+examplesSel.addEventListener('change', (e) => {
+  const k = e.target.value;
+  if (k && /^(虹|波|円).*影詞/.test(k)) {
+    setKageshiMode(true);
+  } else if (k) {
+    setKageshiMode(false);
+  }
+});
+
+// ====== 初期化 ======
+const initial = loadFromHash() || EXAMPLES['FizzBuzz'];
+editor.value = initial;
+syncHighlight();
+execute(false);
+</script>
+</body>
+</html>
