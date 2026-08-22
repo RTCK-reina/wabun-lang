@@ -11,7 +11,8 @@
     "test": "node test/run.js",
     "build": "node scripts/build-playground.js",
     "repl": "node bin/wabun.js repl",
-    "example": "node bin/wabun.js run examples/hello.wb"
+    "example": "node bin/wabun.js run examples/hello.wb",
+    "prepublishOnly": "node test/run.js && node scripts/build-playground.js && git diff --exit-code -- dist/"
   },
   "keywords": [
     "esolang",
@@ -44,6 +45,7 @@
     "examples",
     "docs",
     "README.md",
+    "読本.md",
     "LICENSE",
     "CHANGELOG.md"
   ]
