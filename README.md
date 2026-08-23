@@ -1,5 +1,6 @@
 # 和文 (wabun-lang)
 
+[![npm version](https://img.shields.io/npm/v/wabun-lang.svg)](https://www.npmjs.com/package/wabun-lang)
 [![CI](https://github.com/RTCK-reina/wabun-lang/actions/workflows/ci.yml/badge.svg)](https://github.com/RTCK-reina/wabun-lang/actions/workflows/ci.yml)
 [![Pages](https://github.com/RTCK-reina/wabun-lang/actions/workflows/pages.yml/badge.svg)](https://github.com/RTCK-reina/wabun-lang/actions/workflows/pages.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -57,6 +58,21 @@
 - 卓上実行・JS翻訳・対話処（REPL）・閲覧場（Webプレイグラウンド）
 
 ## 揃へ方
+
+npm から入れる（手元で使うだけならこれが早い）:
+
+```bash
+npm install -g wabun-lang
+wabun run examples/hello.wb
+```
+
+入れずに一度だけ試す:
+
+```bash
+npx wabun-lang run hello.wb
+```
+
+ソースから:
 
 ```bash
 git clone https://github.com/RTCK-reina/wabun-lang.git

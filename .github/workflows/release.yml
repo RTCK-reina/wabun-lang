@@ -1,0 +1,28 @@
+name: Release
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: read
+  id-token: write   # Trusted Publishing (OIDC) に必須
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+      - name: 版を確かむ（Trusted Publishing は npm 11.5.1+ / Node 22.14+ を要す）
+        run: |
+          node -v
+          npm -v
+      - name: 試験
+        run: node test/run.js
+      - name: npm へ公けにす（OIDC。トークン不要、来歴証明は自動で付く）
+        run: npm publish --access public
