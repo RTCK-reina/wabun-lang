@@ -1,6 +1,6 @@
 {
   "name": "wabun-lang",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "和文 (wabun) — a programming language whose syntax follows classical Japanese (bungo) grammar. Compiles to JavaScript.",
   "type": "module",
   "main": "src/index.js",

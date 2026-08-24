@@ -1,5 +1,28 @@
 # 変更履歴
 
+## v1.4.1 — 2026-08-24
+
+言語仕様・処理系に変更なし。案内書きと梱包情報の修正のみ。
+
+### 案内書き
+- README.md / 読本.md に npm よりの揃へ方を追加（`npm install -g wabun-lang` および `npx wabun-lang`）
+- 公開閲覧場 https://rtck-reina.github.io/wabun-lang/ への案内を追加。揃へずとも閲覧器の上にて試せる
+- `dist/wabun.bundle.js` が `src/` からの生成物である旨と、`npm run build` の後に commit すべき旨を明記
+- npm / CI / Pages / License の徽章を追加
+- `git clone <この所在>` のままだった箇所を実際の所在に置換
+
+### 梱包情報
+- `repository.url` が存在しない所在（`github.com/rtck/wabun-lang`）を指してゐたのを修正
+- `bugs` と `homepage` を追加
+- `prepublishOnly` を追加。公開前に試験・束ね直し・`dist` の乖離検査を強制する
+- 配布物（`files`）に `読本.md` を追加
+
+### 整備（配布物には含まれず）
+- 検め（CI）が Node 18/20/22/24/25 の五系統で走るやうになつた
+- 束ね直しの結果が commit されてゐるかを検めが判ずるやうになつた
+- 閲覧場を GitHub Pages に配る仕組みを設けた
+- npm への公開を GitHub Actions の OIDC（Trusted Publishing）に移した。長命な token を持たぬ
+
 ## v1.4.0 — 2026-04-27
 
 ### LLM 用完全指南書を追加
